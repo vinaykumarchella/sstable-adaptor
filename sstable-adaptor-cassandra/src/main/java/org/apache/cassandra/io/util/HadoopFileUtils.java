@@ -50,19 +50,31 @@ public class HadoopFileUtils {
         }
     }
 
+    /**
+     * Delete a file or a directory (recursively)
+     * @param filePath file or directory path
+     * @param conf hadoop configuration
+     * @return
+     */
     public static boolean delete(String filePath, Configuration conf) {
         filePath = normalizeFileName(filePath);
         try {
             Path path = new Path(filePath);
             FileSystem fs = path.getFileSystem(conf);
-            fs.delete(path, false);
+            fs.delete(path, true);
             return true;
         } catch (IOException e) {
-            LOGGER.error("Unable to delete file " + filePath + ": " + e.getMessage());
-            throw new RuntimeException(e.getCause());
+            LOGGER.warn("Unable to delete file " + filePath + ": " + e.getMessage());
+            return false;
         }
     }
 
+    /**
+     * Delete if the path exists
+     * @param filePath
+     * @param conf
+     * @return
+     */
     public static boolean deleteIfExists(String filePath, Configuration conf) {
         filePath = normalizeFileName(filePath);
 
@@ -70,13 +82,12 @@ public class HadoopFileUtils {
             Path path = new Path(filePath);
             FileSystem fs = path.getFileSystem(conf);
             if (fs.exists(path)) {
-                fs.delete(path, false);
+                fs.delete(path, true);
             }
             return true;
         } catch (IOException e) {
-            LOGGER.error("Unable to check the existence and to delete for file " + filePath + ": " + e.getMessage());
-            LOGGER.error(e.getMessage());
-            throw new RuntimeException(e.getCause());
+            LOGGER.warn("Unable to check the existence and to delete for file " + filePath + ": " + e.getMessage());
+            return false;
         }
     }
 
