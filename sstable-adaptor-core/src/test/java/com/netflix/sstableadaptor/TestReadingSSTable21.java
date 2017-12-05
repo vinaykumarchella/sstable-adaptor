@@ -2,20 +2,14 @@ package com.netflix.sstableadaptor;
 
 import com.netflix.sstableadaptor.sstable.SSTableIterator;
 import com.netflix.sstableadaptor.sstable.SSTableSingleReader;
-import com.netflix.sstableadaptor.util.SSTableUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.statements.CFProperties;
 import org.apache.cassandra.cql3.statements.CreateTableStatement;
 import org.apache.cassandra.cql3.statements.ParsedStatement;
-import org.apache.cassandra.db.rows.*;
+import org.apache.cassandra.db.rows.RowIterator;
 import org.apache.cassandra.dht.Murmur3Partitioner;
-import org.apache.cassandra.dht.RandomPartitioner;
-import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
-import org.apache.cassandra.io.sstable.format.SSTableReader;
-import org.apache.cassandra.io.sstable.format.SSTableWriter;
-import org.apache.cassandra.io.util.FileUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -24,10 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -112,110 +103,6 @@ public class TestReadingSSTable21 extends TestBaseSSTableFunSuite {
         Assert.assertEquals(9, counter);
     }
 
-
-    /**
-     *  Test on a local C* 2.1 data
-     *      compressed_bills-03c5a7b0643c11e7936273d8df3aeac7/casspactor2-compressed_bills-ka-1-Data.db
-     *  with composite partition key.
-     */
-    @Test
-    public void testSubscriberData() throws IOException {
-        final String cql = "CREATE TABLE casspactor2.\"CustomerData\" (\n" +
-                "    \"KEY\" text,\n" +
-                "    column1 text,\n" +
-                "    value blob,\n" +
-                "    PRIMARY KEY (\"KEY\", column1)\n" +
-                ") WITH COMPACT STORAGE\n" +
-                "    AND CLUSTERING ORDER BY (column1 ASC)\n" +
-                "    AND comment = 'Customer Data Records'\n" +
-                "    AND compaction = {'min_threshold': '2', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}\n" +
-                "    AND compression = {};";
-
-        final String inputSSTableFullPathFileName = CASS21_DATA_DIR +
-                "CustomerData/Membership-CustomerData-ka-215474-Data.db";
-
-        final int counter = getRowCount(inputSSTableFullPathFileName, cql, false);
-
-        LOGGER.info("\nCounter: " + counter);
-        Assert.assertEquals(9, counter);
-    }
-
-    @Test
-    public void testWriteSubscriberData() throws IOException {
-        final String cql = "CREATE TABLE casspactor2.\"CustomerData\" (\n" +
-                "    \"KEY\" text,\n" +
-                "    column1 text,\n" +
-                "    value blob,\n" +
-                "    PRIMARY KEY (\"KEY\", column1)\n" +
-                ") WITH COMPACT STORAGE\n" +
-                "    AND CLUSTERING ORDER BY (column1 ASC)\n" +
-                "    AND comment = 'Customer Data Records'\n" +
-                "    AND compaction = {'min_threshold': '2', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}\n" +
-                "    AND compression = {};";
-
-        final String inputSSTableFullPathFileName = CASS21_DATA_DIR +
-                "CustomerData/Membership-CustomerData-ka-215474-Data.db";
-
-        LOGGER.info("Input file name: " + inputSSTableFullPathFileName);
-        CFMetaData cfMetaData = CFMetaData.compile(cql, "casspactor2", "RandomPartitioner");
-
-        final SSTableSingleReader sstableSingleReader =
-                new SSTableSingleReader(inputSSTableFullPathFileName, cfMetaData, TestBaseSSTableFunSuite.HADOOP_CONF);
-//        final ISSTableScanner currentScanner =
-//                sstableSingleReader.getSSTableScanner(Long.MIN_VALUE, Long.MAX_VALUE);
-
-        final ISSTableScanner currentScanner =
-                sstableSingleReader.getSSTableScanner(BigInteger.ZERO, new BigInteger("2").pow(127),null);
-
-
-
-
-
-        ////WRITE
-
-        LOGGER.info("Input file name: " + inputSSTableFullPathFileName);
-
-        final Descriptor inputSSTableDescriptor = Descriptor.fromFilename(inputSSTableFullPathFileName,
-                TestBaseSSTableFunSuite.HADOOP_CONF);
-        SSTableWriter writer = null;
-
-//            SSTableSingleReader reader = new SSTableSingleReader(inputSSTableFullPathFileName,
-//                    "casspactor",
-//                    "bills_nc",
-//                    TestBaseSSTableFunSuite.HADOOP_CONF);
-            final CFMetaData inputCFMetaData = sstableSingleReader.getCfMetaData();
-//            final ISSTableScanner currentScanner = reader.getSSTableScanner();
-            final SSTableReader inputSStable = sstableSingleReader.getSstableReader();
-
-            //Create writer
-            final CFMetaData outputCFMetaData = SSTableUtils.createNewCFMetaData(inputSSTableDescriptor, inputCFMetaData);
-            writer = SSTableUtils.createSSTableWriter(inputSSTableDescriptor, outputCFMetaData, inputSStable);
-
-            while (currentScanner.hasNext()) {
-                final UnfilteredRowIterator row = currentScanner.next();
-                while (row.hasNext()) {
-
-                    final Row uRow = (Row) row.next();
-                    Iterator<Cell> cellsIterator = uRow.cells().iterator();
-                    while (cellsIterator.hasNext()) {
-                        Cell cell = cellsIterator.next();
-                        LOGGER.info("Type: " + cell.column().type);
-                        LOGGER.info("Column Name: " + cell.column().name);
-                        LOGGER.info("\t\t" + cell.toString());
-                        cell = cell.withUpdatedValue(ByteBuffer.wrap("Vinay".getBytes()));
-
-                        LOGGER.info("\t After Update" + cell.toString());
-                    }
-                }
-
-                writer.append(row);
-            }
-            writer.finish(false);
-
-
-    }
-
-
     /**
      *  Test on a local C* 2.1 data
      *      user_profiles-b355bee0669911e7a49e993faaf28cc4/abc-user_profiles-ka-1-Data.db
@@ -248,15 +135,11 @@ public class TestReadingSSTable21 extends TestBaseSSTableFunSuite {
                             boolean isThriftTable) throws IOException {
         LOGGER.info("Input file name: " + inputSSTableFullPathFileName);
         int counter = 0;
-        CFMetaData cfMetaData = CFMetaData.compile(cql, "casspactor2", "RandomPartitioner");
+        CFMetaData cfMetaData = CFMetaData.compile(cql, "casspactor2");
         final SSTableSingleReader sstableSingleReader =
                 new SSTableSingleReader(inputSSTableFullPathFileName, cfMetaData, TestBaseSSTableFunSuite.HADOOP_CONF);
-//        final ISSTableScanner currentScanner =
-//                sstableSingleReader.getSSTableScanner(Long.MIN_VALUE, Long.MAX_VALUE);
-
         final ISSTableScanner currentScanner =
-                sstableSingleReader.getSSTableScanner(BigInteger.ZERO, new BigInteger("2").pow(127),null);
-
+                sstableSingleReader.getSSTableScanner(Long.MIN_VALUE, Long.MAX_VALUE);
 
         final int nowInSecs = (int) (System.currentTimeMillis() / 1000);
         final List<ISSTableScanner> scanners = new ArrayList<>();

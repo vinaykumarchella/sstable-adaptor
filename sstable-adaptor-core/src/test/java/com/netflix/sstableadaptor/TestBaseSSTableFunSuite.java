@@ -138,8 +138,8 @@ public class TestBaseSSTableFunSuite {
             final Row row = (Row) rowIterator.next();
             LOGGER.info("\t------------------New sub-row ------------------------------");
             LOGGER.info("Clustering size: " + row.clustering().size());
-            //for(int k=0; k<row.clustering().size(); k++)
-            //    LOGGER.info("\tClustering: " + ByteBufferUtil.toInt(row.clustering().get(k)));
+            for(int k=0; k<row.clustering().size(); k++)
+                LOGGER.info("\tClustering: " + ByteBufferUtil.toInt(row.clustering().get(k)));
 
             final Iterable<Cell> cells = row.cells();
             final Iterator<Cell> cellsIterator = cells.iterator();
@@ -147,7 +147,6 @@ public class TestBaseSSTableFunSuite {
             while (cellsIterator.hasNext()) {
                 final Cell cell = cellsIterator.next();
                 LOGGER.info("Type: " + cell.column().type);
-
                 LOGGER.info("\t\t" + cell.toString());
             }
 
