@@ -238,6 +238,9 @@ public class SSTableIterator implements PartitionIterator {
     public void close() {
         try {
             compacted.close();
+            for (ISSTableScanner scanner : scanners) {
+                scanner.close();
+            }
         } catch (Exception e) {
             LOGGER.info(e.getMessage());
         }
