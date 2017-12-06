@@ -18,9 +18,13 @@
 
 package org.apache.cassandra.io.util;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.compress.BufferType;
+import org.apache.cassandra.io.sstable.CorruptSSTableException;
+import org.apache.cassandra.utils.FBUtilities;
 
 class SimpleChunkReader extends AbstractReaderFileProxy implements ChunkReader
 {
@@ -38,7 +42,29 @@ class SimpleChunkReader extends AbstractReaderFileProxy implements ChunkReader
     public void readChunk(long position, ByteBuffer buffer)
     {
         buffer.clear();
-        channel.read(buffer, position);
+
+        //TODO: will make the retry look nicer with an abstraction class
+        int attempt = 0;
+        int maxAttempt = 3;
+        boolean isSuccess = false;
+        while (!isSuccess) {
+            if (attempt > 0)
+               FBUtilities.sleepQuietly((int) Math.round(Math.pow(2, attempt)) * 1000);
+            try {
+                channel.read(buffer, position);
+                isSuccess = true;
+            }
+            catch (FSReadError e)
+            {
+               attempt++;
+               channel.reopenInputStream();
+               if (attempt == maxAttempt) {
+                  //TODO: what if this is still a network issue, not data corruption
+                  throw new FSReadError(e, "Error on reading " + channel.filePath() +
+                        " on num. attempt " + maxAttempt + " at position " + position);
+               }
+            }
+        }
         buffer.flip();
     }
 

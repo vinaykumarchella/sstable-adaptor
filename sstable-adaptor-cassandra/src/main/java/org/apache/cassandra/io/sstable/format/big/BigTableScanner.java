@@ -205,6 +205,7 @@ public class BigTableScanner implements ISSTableScanner
     {
         try
         {
+            sstable.close();
             if (isClosed.compareAndSet(false, true))
                 FileUtils.close(dfile, ifile);
         }
