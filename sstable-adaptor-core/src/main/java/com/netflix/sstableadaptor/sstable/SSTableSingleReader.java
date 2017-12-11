@@ -67,7 +67,6 @@ public class SSTableSingleReader {
     private EstimatedHistogram estimatedPartitionSize;  //histogram on the partition size?
     private StatsMetadata stats;  //other table stats
     private org.apache.cassandra.io.sstable.format.SSTableReader sstableReader;
-    private IndexSummary indexSummary;
 
     private CFMetaData cfMetaData;
     private Configuration conf;
@@ -196,7 +195,6 @@ public class SSTableSingleReader {
         partitioner = cfMetaData.partitioner;
         stats = sstableReader.getSSTableMetadata();
         estimatedPartitionSize = sstableReader.getEstimatedPartitionSize();
-        indexSummary = sstableReader.getIndexSummary();
     }
 
     /**
@@ -239,7 +237,7 @@ public class SSTableSingleReader {
      * @return IndexSummary
      */
     public IndexSummary getIndexSummary() {
-        return indexSummary;
+        return this.sstableReader.getIndexSummary();
     }
 
     /**
